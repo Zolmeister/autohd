@@ -22,15 +22,7 @@ function override_scroll_event(player) {
 	}
 
 	function notify_player(text) {
-		function html_escape(str) {
-			return str
-				.replace(/&/g, '&amp;')
-				.replace(/"/g, '&quot;')
-				.replace(/'/g, '&#39;')
-				.replace(/</g, '&lt;')
-				.replace(/>/g, '&gt;');
-		}
-		notifier.innerHTML = html_escape(text);
+		notifier.textContent = text
 
 		if (notifier_timeout) {
 			clearTimeout(notifier_timeout);
@@ -72,7 +64,7 @@ function override_scroll_event(player) {
 		}
 
 		e.preventDefault();
-		if (scroll_enabled(yt_config.yt_volume_scroll) && 
+		if (scroll_enabled(yt_config.yt_volume_scroll) &&
 			(Math.abs(e.deltaY) >= 3*Math.abs(e.deltaX))) {
 			// vertical scrolling - volume | direction is within +/- 16.7 degree
 			d_vol += e.deltaY;
@@ -86,7 +78,7 @@ function override_scroll_event(player) {
 				player.setVolume(volume);
 				notify_player("Volume: " + player.getVolume() + '%');
 			}
-		} else if (scroll_enabled(yt_config.yt_seek_scroll) && 
+		} else if (scroll_enabled(yt_config.yt_seek_scroll) &&
 			(Math.abs(e.deltaX) >= 3*Math.abs(e.deltaY))) {
 			// horizontal scrolling - seek | direction is within +/- 16.7 degree
 			d_seek += e.deltaX;
@@ -105,6 +97,29 @@ function override_scroll_event(player) {
 	};
 }
 
+var updateQuality = function(preferredQuality) {
+  if (preferredQuality === undefined) {
+    preferredQuality = 'best-available';
+  }
+
+  var settingsButton = document.getElementsByClassName('ytp-settings-button')[0];
+
+  settingsButton.click();
+
+  var buttons = document.getElementsByClassName('ytp-menuitem-label');
+
+  for (var i = 0; i < buttons.length; i++) {
+    if(buttons[i].innerHTML === 'Quality') {
+      buttons[i].click();
+    }
+  }
+
+  var targetItem;
+
+  targetItem = document.querySelector('.ytp-quality-menu .ytp-menuitem-label');
+
+  targetItem.click();
+}
 
 window.onYouTubePlayerReady = function (player) {
 	if (!player)
@@ -126,7 +141,7 @@ window.onYouTubePlayerReady = function (player) {
 		player.pauseVideo();
 	}
 
-	player.setPlaybackQuality(selected);
+	updateQuality(selected)
 
 	override_scroll_event(player);
 }
