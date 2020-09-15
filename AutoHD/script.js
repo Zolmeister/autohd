@@ -1,148 +1,93 @@
-(function(window) {
-var yt_config = window.yt_config;
-function override_scroll_event(player) {
-	var d_vol = 0,
-		d_seek = 0,
-		movie_player = document.getElementById('movie_player'),
-		notifier = document.getElementById('yt_notifier'),
-		notifier_timeout = 0;
+const $ = document.querySelector.bind(document)
 
-	if (!notifier) {
-		notifier = document.createElement('div')
-		notifier.id = 'yt_notifier';
-		notifier.style.cssText = '';
-		notifier.classList.add('hide');
-		notifier.innerHTML = '&nbsp;';
-
-		movie_player.appendChild(notifier);
-	}
-
-	function is_fullscreen() {
-		return !!document.getElementById('movie_player').classList.contains('ytp-fullscreen');
-	}
-
-	function notify_player(text) {
-		notifier.textContent = text
-
-		if (notifier_timeout) {
-			clearTimeout(notifier_timeout);
-			notifier_timeout = 0;
-		}
-		notifier.classList.remove('hide');
-		notifier_timeout = setTimeout(function() {
-			notifier.classList.add('hide');
-			notifier_timeout = 0;
-		}, 500);
-	}
-
-	function format_play_time(time) {
-		function pad(val) {
-			val = val + '';
-			return val.length == 2 ? val : ('0'+val);
-		}
-		var hour = parseInt(time / 3600),
-			minute = parseInt((time - hour*3600)/60),
-			seconds = parseInt(time - hour*3600 - minute*60);
-		return pad(hour) + ":" + pad(minute) + ":" + pad(seconds);
-	}
-
-	function scroll_enabled(scroll_value) {
-		switch(scroll_value) {
-			case "FULL_SCREEN":
-				return is_fullscreen();
-			case "ALL":
-				return true;
-			default:
-				return false;
-		}
-	}
-
-	movie_player.onwheel = function(e) {
-		if (!scroll_enabled(yt_config.yt_volume_scroll) &&
-			!scroll_enabled(yt_config.yt_seek_scroll)) {
-			return true;
-		}
-
-		e.preventDefault();
-		if (scroll_enabled(yt_config.yt_volume_scroll) &&
-			(Math.abs(e.deltaY) >= 3*Math.abs(e.deltaX))) {
-			// vertical scrolling - volume | direction is within +/- 16.7 degree
-			d_vol += e.deltaY;
-			var modulus = parseInt(d_vol / yt_config.yt_sensitivity_y);
-			if (modulus) {
-				d_vol -= modulus * yt_config.yt_sensitivity_y;
-				var volume = Math.min(Math.max(player.getVolume() + (yt_config.yt_invert_y ? -modulus : modulus) * yt_config.yt_step_y, 0), 100);
-				if (Math.abs(volume - player.getVolume()) < 1.0) {
-					return false;
-				}
-				player.setVolume(volume);
-				notify_player("Volume: " + player.getVolume() + '%');
-			}
-		} else if (scroll_enabled(yt_config.yt_seek_scroll) &&
-			(Math.abs(e.deltaX) >= 3*Math.abs(e.deltaY))) {
-			// horizontal scrolling - seek | direction is within +/- 16.7 degree
-			d_seek += e.deltaX;
-			var modulus = parseInt(d_seek / yt_config.yt_sensitivity_x);
-			if (modulus) {
-				d_seek -= modulus * yt_config.yt_sensitivity_x;
-				var seek = Math.min(Math.max(player.getCurrentTime() + (yt_config.yt_invert_x ? -modulus : modulus) * yt_config.yt_step_x, 0.0), player.getDuration());
-				if (Math.abs(seek - player.getCurrentTime()) < yt_config.yt_step_x) {
-					return false;
-				}
-				player.seekTo(seek);
-				notify_player("Seek: " + format_play_time(player.getCurrentTime()) + " / " + format_play_time(player.getDuration()));
+const waitFor = (selector, $$ = $, cnt = 0) => {
+	return new Promise((resolve, reject) => setTimeout(_ => {
+		const res = $$(selector)
+		if (res == null) {
+			if (cnt > 3) {
+				reject(new Error(`${selector} not found`))
+			} else {
+				resolve(waitFor(selector, $$, cnt + 1))
 			}
 		}
-		return false;
-	};
+		else
+		 	resolve(res)
+	}, 100))
 }
 
-var updateQuality = function(preferredQuality) {
-  if (preferredQuality === undefined) {
-    preferredQuality = 'best-available';
-  }
+const waitForAny = (selector) => waitFor(selector, document.querySelectorAll.bind(document));
 
-  var settingsButton = document.getElementsByClassName('ytp-settings-button')[0];
-
-  settingsButton.click();
-
-  var buttons = document.getElementsByClassName('ytp-menuitem-label');
-
-  for (var i = 0; i < buttons.length; i++) {
-    if(buttons[i].innerHTML === 'Quality') {
-      buttons[i].click();
-    }
-  }
-
-  var targetItem;
-
-  targetItem = document.querySelector('.ytp-quality-menu .ytp-menuitem-label');
-
-  targetItem.click();
+const getQualityButton = async function() {
+	const find = async function() {
+		return Array.from(await waitForAny('.ytp-menuitem-label')).find(x => x.innerHTML === 'Quality')
+	}
+	let found = await find()
+	let cnt = 0
+	while (!found && cnt < 3) {
+		(await waitFor('.ytp-settings-button')).click()
+		found = await find()
+		cnt += 1
+	}
+	if (!found) {
+		throw new Error('settings button not found')
+	}
+	return found
 }
 
-window.onYouTubePlayerReady = function (player) {
-	if (!player)
-		return;
+const getQuality = async function() {
+	return (await getQualityButton()).parentElement.querySelector('.ytp-menuitem-content').textContent
+}
 
-	var selected = (function(player) {
-		if (yt_config.yt_preferred_quality === 'best') {
-			return player.getAvailableQualityLevels()[0];
-		} else {
-			return yt_config.yt_preferred_quality;
-		}
-	})(player);
+const getMaxQuality = async function() {
+	if (!$('.ytp-quality-menu')) {
+		(await getQualityButton()).click()
+	}
+	const res = (await waitFor('.ytp-quality-menu .ytp-menuitem-label')).textContent
+	await closeSettings()
+	return res
+}
 
-	function is_featured_video() {
-		return new RegExp("^\/(user|channel)\/").test(window.location.pathname);
-	};
+const closeSettings = async function() {
+	const button = await waitFor('.ytp-settings-button')
+	if (button.ariaExpanded === 'true') {
+		button.click()
+	}
+}
 
-	if (yt_config.yt_pause_featured_video && is_featured_video()) {
-		player.pauseVideo();
+const setQualityToMax = async function() {
+	if (!$('.ytp-quality-menu')) {
+		(await getQualityButton()).click()
+	}
+	(await waitFor('.ytp-quality-menu .ytp-menuitem-label')).click()
+}
+
+const isFeatured = _ => new RegExp("^\/(user|channel|c|u)\/").test(window.location.pathname)
+
+const update = async function(maxQuality) {
+	const currentQuality = await getQuality()
+
+	if (isFeatured() && !!$('video')) {
+		$('video').muted = true
+	} else if (!!$('video')) {
+		$('video').muted = false
 	}
 
-	updateQuality(selected)
-
-	override_scroll_event(player);
+	if (!currentQuality.includes(maxQuality)) {
+		console.log('AutoHD: from', currentQuality, 'to', maxQuality)
+		return setQualityToMax()
+	}
 }
-})(window);
+
+;((async function() {
+	let maxQuality = await getMaxQuality()
+
+	window.addEventListener('popstate', _ => {
+		getMaxQuality().then(x => maxQuality = x).catch(console.error)
+	})
+
+	const loop = _ => {
+		update(maxQuality).then(_ => setTimeout(loop, 200)).catch(console.error)
+	}
+
+	loop()
+})()).catch(console.error)
