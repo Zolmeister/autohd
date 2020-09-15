@@ -80,12 +80,26 @@ const update = async function(maxQuality) {
 
 ;((async function() {
 	let maxQuality = await getMaxQuality()
+	let disabled = false
+
+	const bindButton = async function() {
+		const button = await waitFor('.ytp-settings-button')
+		button.onclick = _ => {
+			disabled = true
+			setTimeout(_ => disabled = false, 10000)
+		}
+	}
+	bindButton().catch(console.error)
 
 	window.addEventListener('popstate', _ => {
 		getMaxQuality().then(x => maxQuality = x).catch(console.error)
+		bindButton().catch(console.error)
 	})
 
 	const loop = _ => {
+		if (disabled) {
+			return setTimeout(_ => loop, 200)
+		}
 		update(maxQuality).then(_ => setTimeout(loop, 200)).catch(console.error)
 	}
 
