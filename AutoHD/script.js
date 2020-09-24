@@ -4,7 +4,7 @@ const waitFor = (selector, $$ = $, cnt = 0) => {
 	return new Promise((resolve, reject) => setTimeout(_ => {
 		const res = $$(selector)
 		if (res == null) {
-			if (cnt > 3) {
+			if (cnt > 5) {
 				reject(new Error(`${selector} not found`))
 			} else {
 				resolve(waitFor(selector, $$, cnt + 1))
@@ -24,7 +24,8 @@ const getQualityButton = async function() {
 	let found = await find()
 	let cnt = 0
 	while (!found && cnt < 3) {
-		(await waitFor('.ytp-settings-button')).click()
+		await (new Promise((resolve) => setTimeout(resolve, 100)))
+		;(await waitFor('.ytp-settings-button')).click()
 		found = await find()
 		cnt += 1
 	}
@@ -108,10 +109,10 @@ const update = async function(maxQuality) {
 		if (disabled) {
 			return setTimeout(_ => loop, 1000)
 		}
-		update(maxQuality).then(_ => {
+		update(maxQuality).catch(console.error).then(_ => {
 			updating = false
 			setTimeout(loop, 1000)
-		}).catch(console.error)
+		})
 	}
 
 	loop()
