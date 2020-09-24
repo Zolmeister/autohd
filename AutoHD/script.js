@@ -55,6 +55,7 @@ const closeSettings = async function() {
 }
 
 const setQualityToMax = async function() {
+	console.log('set quality to max')
 	if (!$('.ytp-quality-menu')) {
 		(await getQualityButton()).click()
 	}
@@ -81,26 +82,36 @@ const update = async function(maxQuality) {
 ;((async function() {
 	let maxQuality = await getMaxQuality()
 	let disabled = false
+	let updating = false
 
 	const bindButton = async function() {
 		const button = await waitFor('.ytp-settings-button')
 		button.onclick = _ => {
-			disabled = true
-			setTimeout(_ => disabled = false, 10000)
+			if (!updating) {
+				disabled = true
+				setTimeout(_ => disabled = false, 10000)
+			}
 		}
 	}
 	bindButton().catch(console.error)
 
 	window.addEventListener('popstate', _ => {
-		getMaxQuality().then(x => maxQuality = x).catch(console.error)
+		getMaxQuality().then(x => {
+			console.log('autohd: maxQuality', x)
+			maxQuality = x
+		}).catch(console.error)
 		bindButton().catch(console.error)
 	})
 
 	const loop = _ => {
+		updating = true
 		if (disabled) {
-			return setTimeout(_ => loop, 200)
+			return setTimeout(_ => loop, 1000)
 		}
-		update(maxQuality).then(_ => setTimeout(loop, 200)).catch(console.error)
+		update(maxQuality).then(_ => {
+			updating = false
+			setTimeout(loop, 1000)
+		}).catch(console.error)
 	}
 
 	loop()
