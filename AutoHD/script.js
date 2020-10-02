@@ -4,7 +4,7 @@ const waitFor = (selector, $$ = $, cnt = 0) => {
 	return new Promise((resolve, reject) => setTimeout(_ => {
 		const res = $$(selector)
 		if (res == null) {
-			if (cnt > 5) {
+			if (cnt > 10) {
 				reject(new Error(`${selector} not found`))
 			} else {
 				resolve(waitFor(selector, $$, cnt + 1))
@@ -23,7 +23,7 @@ const getQualityButton = async function() {
 	}
 	let found = await find()
 	let cnt = 0
-	while (!found && cnt < 3) {
+	while (!found && cnt < 10) {
 		await (new Promise((resolve) => setTimeout(resolve, 100)))
 		;(await waitFor('.ytp-settings-button')).click()
 		found = await find()
@@ -66,6 +66,7 @@ const setQualityToMax = async function() {
 const isFeatured = _ => new RegExp("^\/(user|channel|c|u)\/").test(window.location.pathname)
 
 const update = async function(maxQuality) {
+	console.log('autohd: loop', maxQuality)
 	const currentQuality = await getQuality()
 
 	if (isFeatured() && !!$('video')) {
@@ -74,7 +75,7 @@ const update = async function(maxQuality) {
 		$('video').muted = false
 	}
 
-	if (!currentQuality.includes(maxQuality)) {
+	if (!currentQuality.includes(maxQuality.replace(/p\d+ HD/, ''))) {
 		console.log('AutoHD: from', currentQuality, 'to', maxQuality)
 		return setQualityToMax()
 	}
@@ -97,6 +98,7 @@ const update = async function(maxQuality) {
 	bindButton().catch(console.error)
 
 	window.addEventListener('popstate', _ => {
+		console.log('autohd: popstate')
 		getMaxQuality().then(x => {
 			console.log('autohd: maxQuality', x)
 			maxQuality = x
@@ -107,7 +109,8 @@ const update = async function(maxQuality) {
 	const loop = _ => {
 		updating = true
 		if (disabled) {
-			return setTimeout(_ => loop, 1000)
+			console.log('autohd: disabled')
+			return setTimeout(loop, 1000)
 		}
 		update(maxQuality).catch(console.error).then(_ => {
 			updating = false
