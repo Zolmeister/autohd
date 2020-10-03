@@ -75,7 +75,7 @@ const update = async function(maxQuality) {
 		$('video').muted = false
 	}
 
-	if (!currentQuality.includes(maxQuality.replace(/p\d+ HD/, ''))) {
+	if (!currentQuality.replace(/p\d+( HD)?/, '').includes(maxQuality.replace(/p\d+( HD)?/, ''))) {
 		console.log('AutoHD: from', currentQuality, 'to', maxQuality)
 		return setQualityToMax()
 	}
