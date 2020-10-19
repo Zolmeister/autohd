@@ -15,15 +15,16 @@
 
   "content_scripts": [{
     "js": ["contentscript.js"],
-    "matches": ["*://www.youtube.com/*"],
+    "matches": ["*://www.youtube.com/*", "*://music.youtube.com/*"],
     "run_at": "document_start"
   }],
   "options_page": "options.html",
-  "web_accessible_resources": ["script.js"],
+  "web_accessible_resources": ["script.js", "script_music.js"],
 
   "permissions": [
     "webRequest",
     "*://www.youtube.com/*",
+    "*://music.youtube.com/*",
     "storage"
   ]
 }

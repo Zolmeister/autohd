@@ -1,6 +1,8 @@
 var storage = chrome.storage.sync;
 
-var scriptUrl = chrome.extension.getURL('script.js');
+var scriptUrl = /https:\/\/music\./.test(window.location.href) ?
+	chrome.extension.getURL('script_music.js') :
+	chrome.extension.getURL('script.js')
 
 storage.get({
 		'yt_preferred_quality': 'best',
